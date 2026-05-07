@@ -524,6 +524,8 @@ if not st.session_state.search_q and not st.session_state.selected_cat:
         with cat_cols[i]:
             if st.button(cat["name_ko"], key=f"cat_{cat['code']}", use_container_width=True):
                 st.session_state.selected_cat = cat["code"]
+                st.session_state.search_q = ""  # 카테고리 클릭 = 검색어 초기화
+                st.session_state.mfr_filter = None
                 st.session_state.page = 0
                 st.rerun()
 
@@ -585,8 +587,13 @@ else:
             label = f"  ✓ {c['name_ko']}" if cur_cat_code == c["code"] else f"  {c['name_ko']}"
             if st.button(label, key=f"sb_cat_{c['code']}", use_container_width=True):
                 st.session_state.selected_cat = c["code"] if cur_cat_code != c["code"] else None
+                st.session_state.search_q = ""  # 카테고리 클릭 = 검색어 초기화 (네비게이션 우선)
                 st.session_state.page = 0
                 st.session_state.mfr_filter = None
+                # query param 도 동기화
+                for k in ["q", "view", "page", "mfr"]:
+                    if k in st.query_params:
+                        del st.query_params[k]
                 st.rerun()
 
         # 브랜드
