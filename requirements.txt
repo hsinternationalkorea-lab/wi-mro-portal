@@ -2,3 +2,5 @@ streamlit>=1.32.0
 pandas>=2.0.0
 python-docx>=1.0.0
 openpyxl>=3.1.0
+# 크롤러 — playwright는 streamlit cloud에선 사용 안 함 (로컬 전용)
+# playwright>=1.40.0  # 로컬에서 따로: pip install playwright && playwright install chromium

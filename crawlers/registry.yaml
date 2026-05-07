@@ -1,0 +1,96 @@
+# =====================================================================
+# 크롤러 레지스트리 — 새 사이트 추가 시 여기에 한 블록만 추가
+# =====================================================================
+# 실행: crawlers/daily_refresh.py 가 이 파일 읽어서 enabled=true 만 순차 실행
+#
+# 필드 의미:
+#   name          — 크롤러 식별자 (소문자, source_code 와 일치)
+#   script        — crawlers/ 안의 .py 파일명
+#   enabled       — true 일 때만 실행
+#   priority      — 실행 순서 (낮은 숫자 먼저)
+#   timeout_min   — 최대 실행 시간 (초과 시 강제 종료, 다음 크롤러로)
+#   delay_after_min — 다음 크롤러 시작 전 휴식 (서버 부하 방지)
+#   notes         — 메모 (어떤 사이트, 회원 필요 등)
+# =====================================================================
+
+crawlers:
+  - name: cretec
+    script: cretec_full_crawl.py
+    enabled: true
+    priority: 1
+    timeout_min: 240
+    delay_after_min: 5
+    notes: "크레텍 - 대리점 회원, 정가/대리점가 분리"
+
+  - name: sercrim
+    script: labbazic_crawl.py
+    enabled: true
+    priority: 2
+    timeout_min: 60
+    delay_after_min: 3
+    notes: "석림랩텍 (LABbazic) - 비회원 표시가"
+
+  - name: daihan
+    script: daihan_crawl.py
+    enabled: true
+    priority: 3
+    timeout_min: 90
+    delay_after_min: 60       # robots.txt Crawl-delay 60초
+    notes: "대한과학 - 비회원, 60초 delay 엄수"
+
+  - name: navimro
+    script: navimro_crawl.py
+    enabled: true
+    priority: 4
+    timeout_min: 300
+    delay_after_min: 5
+    notes: "나비엠알오 - 회원 (sales@wholesale-k.com), li.item card-based"
+
+  - name: subone
+    script: subone_api_crawl.py
+    enabled: true
+    priority: 5
+    timeout_min: 180
+    delay_after_min: 5
+    notes: "서브원 - JSON API + cateSearch + BFS, 회원 (yjyoon)"
+
+  # ===== 잔여과제 (작성 후 enabled=true) =====
+  - name: naver_shopping
+    script: naver_shopping_crawl.py
+    enabled: false
+    priority: 10
+    timeout_min: 60
+    delay_after_min: 5
+    notes: "네이버 쇼핑 API (Phase 1.5)"
+
+  - name: monotaro
+    script: monotaro_crawl.py
+    enabled: false
+    priority: 11
+    timeout_min: 120
+    delay_after_min: 5
+    notes: "모노타로 (Phase 2)"
+
+  - name: cosmosfos
+    script: cosmosfos_crawl.py
+    enabled: false
+    priority: 12
+    timeout_min: 90
+    delay_after_min: 5
+    notes: "코스모포스 (Phase 2)"
+
+  - name: mouser
+    script: mouser_api.py
+    enabled: false
+    priority: 20
+    timeout_min: 30
+    delay_after_min: 2
+    notes: "Mouser Search API (Phase 2, API 승인 대기 중)"
+
+  - name: digikey
+    script: digikey_api.py
+    enabled: false
+    priority: 21
+    timeout_min: 30
+    delay_after_min: 2
+    notes: "Digi-Key Product Search API (Phase 2)"
