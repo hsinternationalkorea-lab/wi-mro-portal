@@ -100,24 +100,26 @@ div[data-testid="stNumberInput"] input:invalid {
     box-shadow: none !important;
 }
 
-/* BaseWeb input wrapper 자체의 빨간 border 차단 */
+/* BaseWeb input wrapper — border만 제거, 높이는 input과 동일하게 */
 div[data-testid="stTextInput"] [data-baseweb="input"],
 div[data-testid="stTextInput"] [data-baseweb="base-input"],
-div[data-testid="stTextInput"] > div > div,
 div[data-testid="stNumberInput"] [data-baseweb="input"],
 div[data-testid="stNumberInput"] [data-baseweb="base-input"] {
     border: none !important;
-    border-color: transparent !important;
     box-shadow: none !important;
     outline: none !important;
     background: transparent !important;
+    height: auto !important;
+    min-height: 52px !important;
+    overflow: visible !important;
 }
 
-/* focus 시 wrapper에 파란 강조 */
-div[data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
-div[data-testid="stTextInput"] [data-baseweb="base-input"]:focus-within {
-    border: none !important;
-    box-shadow: none !important;
+/* stTextInput 컨테이너에 충분한 공간 확보 */
+div[data-testid="stTextInput"] {
+    min-height: 56px !important;
+}
+div[data-testid="stTextInput"] > div {
+    overflow: visible !important;
 }
 div[data-testid="stTextInput"] input:focus,
 div[data-testid="stTextInput"] input:focus-visible {
