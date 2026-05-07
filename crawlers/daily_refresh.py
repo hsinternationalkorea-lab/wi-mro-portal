@@ -26,6 +26,18 @@ REGISTRY = ROOT / "crawlers" / "registry.yaml"
 LOG_DIR = ROOT / "output" / "cron"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# Mac에서 cron 시작 전 NAS 마운트 보장
+if sys.platform == "darwin":
+    nas_mount = Path("/Volumes/Group_Hub")
+    if not nas_mount.exists():
+        ensure_script = ROOT / "scripts" / "ensure_nas.sh"
+        if ensure_script.exists():
+            try:
+                subprocess.run(["bash", str(ensure_script)], timeout=30)
+                time.sleep(3)
+            except Exception as e:
+                print(f"WARN NAS 마운트 시도 실패: {e}")
+
 # Windows 절전 방지
 if sys.platform == "win32":
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
