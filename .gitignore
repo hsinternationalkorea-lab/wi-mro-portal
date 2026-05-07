@@ -12,10 +12,12 @@ _secrets/
 # =====================================================================
 output/
 *.log
-*.png
-*.jpg
-*.jpeg
-*.gif
+
+# output 폴더 안 이미지/스크린샷만 차단 (로고 등 portal 자산은 보호)
+output/**/*.png
+output/**/*.jpg
+output/**/*.jpeg
+output/**/*.gif
 
 # 단, output 폴더 안의 의미있는 결과(JSON 분석 등)는 제외
 !output/.keep
