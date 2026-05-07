@@ -265,7 +265,7 @@ def search_with_count(query, category, manufacturer_filter, page, per_page, sort
     c = get_client()
     import urllib.request, json
     params = {
-        "select": "id,wi_code,category_code,sub_category,name_ko,spec,manufacturer,primary_image_url,list_price,cost_price,margin_pct,price_unit,source_code,is_directly_sold",
+        "select": "id,wi_code,category_code,sub_category,name_ko,spec,manufacturer,primary_image_url,list_price,cost_price,margin_pct,price_unit,source_code,is_directly_sold,price_status",
         "is_published": "eq.true",
     }
     if query and query.strip():
@@ -661,14 +661,26 @@ else:
                         else:
                             price_html = '<span style="font-size:13px;color:var(--wi-text-sub)">가격 문의</span>'
 
-                        # Admin 모드 — cost + 마진
+                        # Admin 모드 — cost + 마진 또는 미확정 라벨
                         admin_block = ""
                         if st.session_state.is_admin == True:
-                            margin_color = "#D32F2F" if margin == 0 else "#388E3C" if margin >= 15 else "#F57C00"
-                            admin_block = f"""
+                            ps = prod.get("price_status") or ""
+                            if ps == "priced":
+                                margin_color = "#388E3C" if margin >= 15 else "#F57C00"
+                                admin_block = f"""
 <div class="admin-cost">
   <span class="label">원가</span> ₩{int(cost_p or 0):,} ·
   <span style="color:{margin_color};font-weight:600">마진 {margin}%</span>
+</div>"""
+                            elif ps == "cost_unconfirmed":
+                                admin_block = """
+<div class="admin-cost">
+  <span style="color:#999;font-size:10px;background:#F5F5F5;padding:2px 6px;border-radius:3px;font-weight:500">원가 미확정</span>
+</div>"""
+                            elif ps == "no_price":
+                                admin_block = """
+<div class="admin-cost">
+  <span style="color:#E65100;font-size:10px;background:#FFF3E0;padding:2px 6px;border-radius:3px;font-weight:500">가격 미확정</span>
 </div>"""
 
                         # 카드 전체가 클릭 가능 — 검색 + admin 상태도 query에 포함
@@ -1076,14 +1088,28 @@ def show_product_detail(prod):
         if st.session_state.is_admin == True:
             cost_p = prod.get("cost_price") or 0
             margin = prod.get("margin_pct") or 0
-            color = "#D32F2F" if margin == 0 else "#388E3C" if margin >= 15 else "#F57C00"
-            st.markdown(
-                f'<div style="background:#FFF8E1;border-left:3px solid #FFA000;padding:10px 14px;margin:8px 0">'
-                f'<strong style="color:#F57C00">Admin</strong>  '
-                f'원가 ₩{int(cost_p):,} · '
-                f'<span style="color:{color};font-weight:600">마진 {margin}%</span></div>',
-                unsafe_allow_html=True,
-            )
+            ps = prod.get("price_status") or ""
+            if ps == "priced":
+                color = "#388E3C" if margin >= 15 else "#F57C00"
+                st.markdown(
+                    f'<div style="background:#FFF8E1;border-left:3px solid #FFA000;padding:10px 14px;margin:8px 0">'
+                    f'<strong style="color:#F57C00">Admin</strong>  '
+                    f'원가 ₩{int(cost_p):,} · '
+                    f'<span style="color:{color};font-weight:600">마진 {margin}%</span></div>',
+                    unsafe_allow_html=True,
+                )
+            elif ps == "cost_unconfirmed":
+                st.markdown(
+                    '<div style="background:#F5F5F5;border-left:3px solid #999;padding:10px 14px;margin:8px 0;color:#666">'
+                    '<strong>Admin</strong>  원가 미확정 — 출처에 회원가만 노출되어 원가/표시가 분리 불가</div>',
+                    unsafe_allow_html=True,
+                )
+            elif ps == "no_price":
+                st.markdown(
+                    '<div style="background:#FFF3E0;border-left:3px solid #E65100;padding:10px 14px;margin:8px 0;color:#666">'
+                    '<strong style="color:#E65100">Admin</strong>  가격 미확정 — 출처에 가격 자체가 없음</div>',
+                    unsafe_allow_html=True,
+                )
 
         if prod.get("spec"):
             st.markdown(f"**규격/사양:** {prod['spec']}")
