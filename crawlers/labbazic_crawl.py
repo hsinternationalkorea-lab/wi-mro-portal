@@ -49,8 +49,19 @@ def map_to_wi(label, name="", spec=""):
 
 def extract_categories(page):
     """석림랩텍 카테고리 트리 추출 (cateCd=XXX)"""
-    page.goto("https://www.labbazic.com/", wait_until="networkidle", timeout=15000)
-    page.wait_for_timeout(2000)
+    # labbazic.com은 networkidle까지 가지 않을 때가 많아 domcontentloaded로 완화 + 60s 타임아웃 + 1회 재시도
+    last_err = None
+    for attempt in range(2):
+        try:
+            page.goto("https://www.labbazic.com/", wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(2000)
+            break
+        except Exception as e:
+            last_err = e
+            print(f"[retry {attempt+1}/2] labbazic.com 첫 로드 실패: {e}", flush=True)
+            page.wait_for_timeout(5000)
+    else:
+        raise last_err
     cats = page.evaluate("""() => {
         const links = Array.from(document.querySelectorAll('a'));
         const seen = new Set();
@@ -162,9 +173,9 @@ def main():
 
         for i, cat in enumerate(cats, 1):
             try:
-                # 카테고리 페이지 진입
+                # 카테고리 페이지 진입 — domcontentloaded + 45s (networkidle은 자주 막힘)
                 url = f"https://www.labbazic.com/goods/goods_list.php?cateCd={cat['code']}"
-                page.goto(url, wait_until="networkidle", timeout=20000)
+                page.goto(url, wait_until="domcontentloaded", timeout=45000)
                 page.wait_for_timeout(2000)
 
                 products = parse_results(page)
