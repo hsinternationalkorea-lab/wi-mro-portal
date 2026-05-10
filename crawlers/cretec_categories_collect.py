@@ -100,17 +100,44 @@ def main():
         )
         page = context.new_page()
 
-        print("\n[1] ctx.cretec.kr 진입")
-        page.goto("https://ctx.cretec.kr/", wait_until="domcontentloaded", timeout=45000)
-        page.wait_for_timeout(2500)
-
-        print("[2] #categoryBtn 클릭 (카테고리 트리 펼침)")
-        try:
-            page.evaluate("document.getElementById('categoryBtn').click()")
-        except Exception as e:
-            print(f"    !! categoryBtn click 실패: {e}")
-            print("       (트리가 다른 방식으로 노출되는지 확인 필요)")
+        print("\n[1] ctx.cretec.kr/CtxApp/ 진입 (meta refresh 우회)")
+        page.goto("https://ctx.cretec.kr/CtxApp/", wait_until="domcontentloaded", timeout=45000)
         page.wait_for_timeout(3000)
+        print(f"    URL: {page.url}")
+        print(f"    Title: {page.title()}")
+
+        # 본문 일부 — 로그인 페이지인지 메인인지 확인
+        body_sample = page.evaluate("() => document.body.innerText.slice(0, 300).replace(/\\s+/g, ' ')")
+        print(f"    body[0:300]: {body_sample}")
+        # 로그인 페이지로 빠졌는지 단순 체크
+        if any(k in body_sample for k in ["로그인", "아이디", "비밀번호", "Sign in", "Login"]):
+            if "카테고리" not in body_sample:
+                print("    !! 로그인 페이지로 보임 → cookie 만료 가능성")
+
+        print("[2] #categoryBtn 클릭 + #dropDownCategory 펼침 (Bootstrap collapse)")
+        try:
+            page.evaluate("""() => {
+                const btn = document.getElementById('categoryBtn');
+                if (btn) btn.click();
+                // collapse 영역 강제로 펼침 (Bootstrap 호환)
+                const dd = document.getElementById('dropDownCategory');
+                if (dd) {
+                    dd.classList.add('show', 'in');
+                    dd.classList.remove('collapse', 'collapsing');
+                    dd.style.display = 'block';
+                    dd.style.height = 'auto';
+                }
+            }""")
+        except Exception as e:
+            print(f"    !! click/expand 실패: {e}")
+        # 펼침 + AJAX 로드 대기
+        page.wait_for_timeout(4000)
+        try:
+            page.wait_for_selector("#dropDownCategory", timeout=5000)
+            inner_len = page.evaluate("() => { const e=document.getElementById('dropDownCategory'); return e ? e.innerText.length : 0; }")
+            print(f"    #dropDownCategory innerText 길이: {inner_len}")
+        except Exception as e:
+            print(f"    #dropDownCategory 대기 실패: {e}")
 
         print("[3] 1차 추출")
         cats = collect_from_dom(page)
@@ -132,12 +159,12 @@ def main():
         # 디버그: 트리 영역 outerHTML 저장 (selector 가 다를 수 있어 본문 일부도)
         try:
             html_part = page.evaluate(r"""() => {
-                const candidates = ['#categoryArea', '#categoryBox', '.category-tree', '#category', '#categoryBtn'];
+                const candidates = ['#dropDownCategory', '#categoryArea', '#categoryBox', '.category-tree', '#category', 'nav', '#categoryBtn'];
                 for (const sel of candidates) {
                     const el = document.querySelector(sel);
-                    if (el) return sel + '\n' + el.outerHTML;
+                    if (el && el.outerHTML.length > 300) return sel + '\n' + el.outerHTML.slice(0, 200000);
                 }
-                return 'NO_CONTAINER\n' + document.body.outerHTML.slice(0, 100000);
+                return 'NO_CONTAINER\n' + document.body.outerHTML.slice(0, 200000);
             }""")
             DEBUG_HTML.write_text(html_part, encoding="utf-8")
             print(f"\n    debug HTML: {DEBUG_HTML} ({DEBUG_HTML.stat().st_size:,} bytes)")
