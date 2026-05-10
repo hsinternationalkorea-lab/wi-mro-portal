@@ -418,17 +418,10 @@ def cart_total():
                for item in st.session_state.cart.values())
 
 
-# URL 파라미터 복원 — 카드 클릭 시 검색 + admin 상태 유지
+# URL 파라미터 복원 — 외부에서 ?q=, ?cat=, ?view= 로 직접 진입한 케이스만 처리
+# (admin/admin_orders 자동 복원은 보안상 제거 — URL만으로 admin 권한 부여 X.
+#  카드 클릭이 st.button 콜백 방식으로 바뀌어 session 손실도 더 이상 없음)
 qp = st.query_params if hasattr(st, "query_params") else {}
-# admin=1 — 카드 클릭으로 reload된 경우 admin 상태 유지 (이미 로그인된 상태였으면 그대로)
-if qp.get("admin") == "1":
-    if st.session_state.is_admin == False:
-        # 처음 들어온 경우만 pending → 로그인 폼 표시
-        st.session_state.is_admin = "pending"
-    # 이미 True면 그대로 유지
-# admin_orders=1 — admin 의뢰 관리 뷰로 복귀
-if qp.get("admin_orders") == "1" and st.session_state.is_admin == True:
-    st.session_state.view_admin_orders = True
 
 # 검색 상태 복원 (카드 클릭으로 reload된 경우)
 if qp.get("q") and not st.session_state.search_q:
@@ -497,6 +490,19 @@ if st.session_state.is_admin == "pending":
                 st.rerun()
             else:
                 st.error("비밀번호가 틀립니다")
+    st.stop()
+
+
+# 상품 상세 — set 되어 있으면 다른 메인 UI 안 그리고 detail 화면만 표시 (modal-like)
+if st.session_state.view_detail_for:
+    # 상단 닫기 버튼
+    bc1, _bc2 = st.columns([2, 8])
+    with bc1:
+        if st.button("← 검색 결과로 돌아가기", key="detail_close_top", use_container_width=True):
+            st.session_state.view_detail_for = None
+            st.rerun()
+    st.markdown("---")
+    show_product_detail(st.session_state.view_detail_for)
     st.stop()
 
 
@@ -683,47 +689,30 @@ else:
   <span style="color:#E65100;font-size:10px;background:#FFF3E0;padding:2px 6px;border-radius:3px;font-weight:500">가격 미확정</span>
 </div>"""
 
-                        # 카드 전체가 클릭 가능 — 검색 + admin 상태도 query에 포함
-                        import urllib.parse as _up
-                        href_parts = [f"view={prod['id']}"]
-                        if st.session_state.search_q:
-                            href_parts.append(f"q={_up.quote(st.session_state.search_q)}")
-                        if st.session_state.selected_cat:
-                            href_parts.append(f"cat={st.session_state.selected_cat}")
-                        if st.session_state.page > 0:
-                            href_parts.append(f"page={st.session_state.page}")
-                        if st.session_state.sort != "랜덤":
-                            href_parts.append(f"sort={_up.quote(st.session_state.sort)}")
-                        if st.session_state.mfr_filter:
-                            href_parts.append(f"mfr={_up.quote(st.session_state.mfr_filter)}")
-                        # admin 상태 보존 (제품확대 시 일반모드로 바뀌는 버그 방지)
-                        if st.session_state.is_admin == True:
-                            href_parts.append("admin=1")
-                        if st.session_state.view_admin_orders:
-                            href_parts.append("admin_orders=1")
-                        href = "?" + "&".join(href_parts)
-
+                        # 카드 (단순 div — full page navigation으로 인한 session 손실 방지)
                         st.markdown(f"""
-<a href="{href}" target="_self" style="text-decoration:none;color:inherit;display:block">
-  <div class="product-card">
-    <div class="img-wrap">{img_html}</div>
-    <div class="name">{name}</div>
-    <div class="spec">{spec}</div>
-    <div class="price">{price_html}</div>
-    <div class="meta">
-      <span class="mfr">{mfr}{badge}</span>
-      <span class="wi-code">{wi_code}</span>
-    </div>
-    {admin_block}
+<div class="product-card">
+  <div class="img-wrap">{img_html}</div>
+  <div class="name">{name}</div>
+  <div class="spec">{spec}</div>
+  <div class="price">{price_html}</div>
+  <div class="meta">
+    <span class="mfr">{mfr}{badge}</span>
+    <span class="wi-code">{wi_code}</span>
   </div>
-</a>
+  {admin_block}
+</div>
 """, unsafe_allow_html=True)
-                        # 수량 + 카트 담기 (별도 액션은 카드 밖에 둠)
-                        cc1, cc2 = st.columns([1, 2])
-                        with cc1:
+                        # 액션: 상세 / 수량 / 카트 담기 (모두 st.button 콜백 — session_state 유지)
+                        ac1, ac2, ac3 = st.columns([1, 1, 2])
+                        with ac1:
+                            if st.button("상세", key=f"view_{prod['id']}", use_container_width=True):
+                                st.session_state.view_detail_for = prod
+                                st.rerun()
+                        with ac2:
                             qty = st.number_input("수량", min_value=1, value=1, step=1,
                                                   key=f"qty_{prod['id']}", label_visibility="collapsed")
-                        with cc2:
+                        with ac3:
                             if st.button("카트 담기", key=f"add_{prod['id']}", use_container_width=True):
                                 add_to_cart(prod, qty)
                                 st.toast(f"카트에 추가: {prod.get('name_ko','')[:20]} × {qty}")
@@ -1142,7 +1131,7 @@ def show_product_detail(prod):
                 )
 
 
-# URL ?view=ID 감지 → 모달 표시
+# URL ?view=ID 외부 직접 진입 처리 — view_detail_for 설정 후 다음 rerun에서 상단 detail 가드(line ~497)가 표시
 qp_view = st.query_params.get("view") if hasattr(st, "query_params") else None
 if qp_view and not st.session_state.view_detail_for:
     try:
@@ -1150,14 +1139,10 @@ if qp_view and not st.session_state.view_detail_for:
         prod_data = c.select("products", id=f"eq.{int(qp_view)}", limit="1")
         if isinstance(prod_data, list) and prod_data:
             st.session_state.view_detail_for = prod_data[0]
-        # query_params는 사용 후 삭제 (다음 클릭에 다시 동작하도록)
-        del st.query_params["view"]
+        del st.query_params["view"]  # 처리 후 URL 정리
+        st.rerun()
     except Exception:
         pass
-
-if st.session_state.view_detail_for:
-    show_product_detail(st.session_state.view_detail_for)
-    st.session_state.view_detail_for = None
 
 
 # 견적 모달
