@@ -16,27 +16,27 @@
 crawlers:
   - name: cretec
     script: cretec_full_crawl.py
-    enabled: true
+    enabled: false
     priority: 1
     timeout_min: 240
     delay_after_min: 5
-    notes: "크레텍 - 대리점 회원, 정가/대리점가 분리"
+    notes: "크레텍 - 대리점 회원. DISABLED 2026-05-09: categories_full.json 사전 파일 필요. 별도 셋업 후 재활성"
 
   - name: sercrim
     script: labbazic_crawl.py
     enabled: true
     priority: 2
-    timeout_min: 60
+    timeout_min: 240
     delay_after_min: 3
-    notes: "석림랩텍 (LABbazic) - 비회원 표시가"
+    notes: "석림랩텍 (LABbazic) - 비회원 표시가. timeout 60->240 (작업량 대비)"
 
   - name: daihan
     script: daihan_crawl.py
-    enabled: true
+    enabled: false
     priority: 3
-    timeout_min: 90
-    delay_after_min: 60       # robots.txt Crawl-delay 60초
-    notes: "대한과학 - 비회원, 60초 delay 엄수"
+    timeout_min: 1200
+    delay_after_min: 60
+    notes: "대한과학 - 비회원, 60초 delay 엄수. DISABLED 2026-05-09: 60초*1134SKU=18시간 한 번에 무리. 점진/incremental 방식으로 별도 작업"
 
   - name: navimro
     script: navimro_crawl.py

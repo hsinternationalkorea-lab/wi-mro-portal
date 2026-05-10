@@ -73,6 +73,9 @@ def parse_yaml_simple(path):
 
 
 def parse_value(v):
+    # inline comment 제거 (yaml 단순 파서 — 우리 registry는 따옴표 안에 # 안 씀)
+    if " #" in v:
+        v = v.split(" #", 1)[0].rstrip()
     if v.lower() in ("true", "yes"):
         return True
     if v.lower() in ("false", "no"):
