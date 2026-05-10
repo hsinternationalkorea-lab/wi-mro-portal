@@ -221,9 +221,10 @@ def main():
             time.sleep(0.2)
         print(f"  → API로 신규 {api_total_added}건", flush=True)
 
-        # === [3] cateSearch.do로 진짜 카테고리 코드 (C1000xxx) 시도 ===
-        print("\n[3] cateSearch.do disp_ctg_no=C1000001~C1099999 (1~3자리 brute)", flush=True)
-        # main_cats에서 발견된 진짜 코드 우선
+        # === [3] cateSearch.do — main_cats에서 발견된 진짜 카테고리 코드만 ===
+        # (이전: brute force로 99999개 후보 × 3 ftDepth × 20 page = 38시간 → 매번 timeout
+        #  → 발견된 코드만, ftDepth=1만, page 1~3만, 카테고리당 60초 예산)
+        print("\n[3] cateSearch.do — discovered 카테고리만 (효율화)", flush=True)
         discovered_codes = set()
         for c in main_cats:
             for k in c.keys():
@@ -231,82 +232,89 @@ def main():
                 if isinstance(v, str) and re.match(r'^C\d{6,8}$', v):
                     discovered_codes.add(v)
         print(f"  메인 트리에서 발견된 카테고리 코드: {len(discovered_codes)}개")
-        for code in list(discovered_codes)[:10]:
-            print(f"    {code}")
 
-        # 만약 코드 발견 못 했으면 처음 10개 메인 카테고리 페이지 방문해서 추출
-        if len(discovered_codes) < 5:
-            # cateSearch.do?disp_ctg_no=C100001 같은 큰 ID brute로 첫 hit 찾기
-            for ci in [100001, 100002, 100003, 1000001, 1000002, 1000010, 1000020, 1000030, 1000061, 1000100, 1000200]:
-                code = f'C{ci}'
-                url = f"https://store.serveone.co.kr/ssp/search/cateSearch.do?disp_ctg_no={code}&ftDepth=1"
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=12000)
-                    page.wait_for_timeout(1500)
-                    products = extract_products_from_page(page)
-                    if len(products) > 5:
-                        print(f"    {code} → {len(products)}건 (HIT!)")
-                        discovered_codes.add(code)
-                except: pass
-                time.sleep(0.3)
-
-        # 발견된 카테고리 코드 각각 크롤
-        for code in discovered_codes:
-            for ftd in [1, 2, 3]:
-                url = (f"https://store.serveone.co.kr/ssp/search/cateSearch.do"
-                       f"?sort=RANK/DESC&disp_ctg_no={code}&ftDepth={ftd}")
-                try:
-                    cat_added = 0
-                    for pn in range(1, 20):
-                        target = url + (f"&page={pn}" if pn > 1 else "")
-                        page.goto(target, wait_until="domcontentloaded", timeout=15000)
-                        page.wait_for_timeout(1500)
-                        for _ in range(4):
-                            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                            page.wait_for_timeout(500)
-                        products = extract_products_from_page(page)
-                        if not products: break
-                        new_in_page = 0
-                        for prod in products:
-                            pid, ins, upd = upsert_product(client, prod, f'{code}-d{ftd}', seen_ids)
-                            inserted += ins; updated += upd
-                            if ins: new_in_page += 1; cat_added += 1
-                        if new_in_page == 0: break
-                    if cat_added > 0:
-                        print(f"  {code} d={ftd} +{cat_added} | 누적 {inserted+updated}", flush=True)
-                except Exception as e:
-                    pass
-                time.sleep(DELAY)
-
-        # === [4] 상세 페이지 BFS — 기존 1020건 + 신규 → 관련상품 expand ===
-        print("\n[4] 상세 페이지 BFS — 관련상품 발굴", flush=True)
-        # 모든 subone 상품 ID 가져오기 (뱃치)
-        bfs_queue = list(seen_ids)[:2000]  # 처음 2000개만
-        bfs_added = 0
-        for i, pid in enumerate(bfs_queue, 1):
+        # 시간 예산: subone 전체 budget = 100분 (180분 timeout 안에 끝나도록 안전 마진)
+        BUDGET_PHASE3_SEC = 60 * 60   # 60분
+        BUDGET_PER_CAT_SEC = 60       # 카테고리 당 1분
+        BUDGET_PHASE4_SEC = 30 * 60   # 30분 (BFS 단계)
+        phase3_start = time.time()
+        cat_count = 0
+        for code in sorted(discovered_codes):
+            if time.time() - phase3_start > BUDGET_PHASE3_SEC:
+                print(f"  ! Phase 3 예산({BUDGET_PHASE3_SEC//60}분) 초과 → 종료, 남은 {len(discovered_codes)-cat_count}개 카테고리 스킵", flush=True)
+                break
+            cat_count += 1
+            cat_start = time.time()
+            url = (f"https://store.serveone.co.kr/ssp/search/cateSearch.do"
+                   f"?sort=RANK/DESC&disp_ctg_no={code}&ftDepth=1")
+            cat_added = 0
             try:
-                url = f"https://store.serveone.co.kr/pr/pr-product-detail.do?prdId={pid}"
-                page.goto(url, wait_until="domcontentloaded", timeout=12000)
-                page.wait_for_timeout(1200)
-                for _ in range(3):
+                for pn in range(1, 4):  # 처음 3페이지만
+                    if time.time() - cat_start > BUDGET_PER_CAT_SEC:
+                        break
+                    target = url + (f"&page={pn}" if pn > 1 else "")
+                    page.goto(target, wait_until="domcontentloaded", timeout=15000)
+                    page.wait_for_timeout(1200)
                     page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    page.wait_for_timeout(400)
-                products = extract_products_from_page(page)
-                page_added = 0
-                for prod in products:
-                    if prod['source_id'] == pid: continue
-                    pid2, ins, upd = upsert_product(client, prod, "관련상품", seen_ids)
-                    inserted += ins; updated += upd
-                    if ins: page_added += 1
-                if page_added > 0:
-                    bfs_added += page_added
-                if i % 20 == 0:
-                    elapsed = time.time() - started
-                    eta = (elapsed/i) * (len(bfs_queue)-i) / 60
-                    print(f"  BFS [{i}/{len(bfs_queue)}] | +{bfs_added} | 누적 {inserted+updated} | ETA {eta:.0f}m", flush=True)
+                    page.wait_for_timeout(500)
+                    products = extract_products_from_page(page)
+                    if not products:
+                        break
+                    new_in_page = 0
+                    for prod in products:
+                        pid, ins, upd = upsert_product(client, prod, code, seen_ids)
+                        inserted += ins; updated += upd
+                        if ins:
+                            new_in_page += 1
+                            cat_added += 1
+                    if new_in_page == 0:
+                        break  # 신규 없으면 다음 카테고리
             except Exception:
                 pass
-            time.sleep(0.3)
+            if cat_added > 0:
+                elapsed = time.time() - started
+                print(f"  [{cat_count}/{len(discovered_codes)}] {code} +{cat_added} | 누적 {inserted+updated} | 경과 {elapsed/60:.1f}m", flush=True)
+            time.sleep(DELAY)
+
+        # === [4] 상세 페이지 BFS — 시간 남으면 ===
+        # 어차피 매일 도는 cycle이라 일부만 처리해도 점진 누적
+        budget_left = BUDGET_PHASE4_SEC - max(0, (time.time() - phase3_start) - BUDGET_PHASE3_SEC)
+        if budget_left < 60:
+            print(f"\n[4] BFS 스킵 (남은 예산 {budget_left:.0f}s)", flush=True)
+        else:
+            print(f"\n[4] 상세 페이지 BFS — 시간 예산 {budget_left/60:.0f}분", flush=True)
+            phase4_start = time.time()
+            # 매일 처음 500개만 (전체 12K+ 라 25일이면 한 사이클 — 충분히 fresh)
+            bfs_queue = list(seen_ids)[:500]
+            bfs_added = 0
+            for i, pid in enumerate(bfs_queue, 1):
+                if time.time() - phase4_start > budget_left:
+                    print(f"  ! BFS 예산 초과 → 중단 ({i}/{len(bfs_queue)} 처리)", flush=True)
+                    break
+                try:
+                    url = f"https://store.serveone.co.kr/pr/pr-product-detail.do?prdId={pid}"
+                    page.goto(url, wait_until="domcontentloaded", timeout=12000)
+                    page.wait_for_timeout(800)
+                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    page.wait_for_timeout(400)
+                    products = extract_products_from_page(page)
+                    page_added = 0
+                    for prod in products:
+                        if prod['source_id'] == pid:
+                            continue
+                        _, ins, upd = upsert_product(client, prod, "관련상품", seen_ids)
+                        inserted += ins; updated += upd
+                        if ins:
+                            page_added += 1
+                    if page_added > 0:
+                        bfs_added += page_added
+                    if i % 50 == 0:
+                        elapsed = time.time() - phase4_start
+                        eta = (elapsed/i) * (len(bfs_queue)-i) / 60
+                        print(f"  BFS [{i}/{len(bfs_queue)}] | +{bfs_added} | 누적 {inserted+updated} | ETA {eta:.0f}m", flush=True)
+                except Exception:
+                    pass
+                time.sleep(0.3)
 
         browser.close()
 

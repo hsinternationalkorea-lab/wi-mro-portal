@@ -204,8 +204,10 @@ def main():
         emoji = "✅" if status == "success" else "❌" if status in ("failed", "error") else "⏱️" if status == "timeout" else "⏭️"
         print(f"  {emoji} {name:<15} {status:<10} {dur/60:.1f}분")
 
-    # 실패 있으면 exit code 1 (Task Scheduler가 알 수 있도록)
-    if any(s[1][0] in ("failed", "error", "timeout") for s in summary):
+    # exit 1은 "전체가 실패"일 때만. 부분 실패는 systemd status를 'failed'로 만들지 않음
+    # (개별 실패는 Supabase crawl_runs + 이 stdout 로그에 이미 기록됨)
+    if summary and all(s[1][0] in ("failed", "error", "timeout") for s in summary):
+        print("\n[exit 1] 모든 크롤러 실패", flush=True)
         sys.exit(1)
 
 
