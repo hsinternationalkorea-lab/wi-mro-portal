@@ -62,7 +62,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 빠른 연락")
     st.markdown(
-        "- ✉️ [kjhong@wholesale-k.com](mailto:kjhong@wholesale-k.com)\n"
+        "- ✉️ [sale@wholesale-k.com](mailto:sale@wholesale-k.com)\n"
         "- ✉️ [yjyoon@wholesale-k.com](mailto:yjyoon@wholesale-k.com)\n"
         "- 🌐 [https://portal.koreaene.co.kr](https://portal.koreaene.co.kr)"
     )
@@ -109,7 +109,7 @@ if prompt := st.chat_input("문의 내용을 입력하세요"):
         response = (
             "문의 내용을 잘 받았습니다. **AI가 아직 학습 중**이라 정확한 답변이 어렵습니다.\n\n"
             "남기신 내용은 저장되어 **내일 오전 9시 이후 직원이 검토 후 답변**드리겠습니다.\n\n"
-            "급하신 경우 메일(kjhong@wholesale-k.com)로 연락 부탁드립니다."
+            "급하신 경우 메일(sale@wholesale-k.com)로 연락 부탁드립니다."
         )
     else:
         response = (
