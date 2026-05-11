@@ -406,18 +406,17 @@ if "admin_order_filter" not in st.session_state: st.session_state.admin_order_fi
 
 
 def upgrade_image_url(url, source_code=""):
-    """이미지 URL을 더 큰 사이즈로 변환 (출처별 패턴)"""
+    """이미지 URL을 더 큰 사이즈로 변환 (출처별 패턴)
+
+    cretec 의 -1.jpg(큰 사이즈)는 모든 상품에 존재하는 게 아니라 404 다발 →
+    raw thumbnail 그대로 사용 (modal max-height 500px 라 -2-3.jpg 도 충분).
+    """
     if not url:
         return url
-    # 크레텍: -2-3.jpg (작은) → -1.jpg (큰)
-    if "ctx.cretec.kr" in url:
-        # /SBI_ITEM_IMG/3273006-2-3.jpg?14 → /SBI_ITEM_IMG/3273006-1.jpg
-        m = re.search(r"/SBI_ITEM_IMG/(\d+)", url)
-        if m:
-            return re.sub(r"/SBI_ITEM_IMG/(\d+)[-\d]*\.(jpg|JPG|jpeg|png)", rf"/SBI_ITEM_IMG/\1-1.\2", url)
-    # 석림랩텍: 보통 small/medium/big 폴더
+    # 석림랩텍: small/medium/big 폴더 변환 (이건 안전)
     if "sercrim" in url or "labbazic" in url:
         return url.replace("/small/", "/big/").replace("_small", "_big")
+    # cretec: 변환 금지 (-1.jpg 존재 보장 안 됨)
     return url
 
 

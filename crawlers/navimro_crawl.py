@@ -100,12 +100,28 @@ def parse_products(page):
             }
             if (!name || name.length < 2) continue;
 
+            // 이미지 추출 — navimro 는 lazy load 라 img.src 가 placeholder(pb-icon.png) 인 경우 다수
+            // data-src / data-original 우선, placeholder 패턴 거르기
             const img = card.querySelector('img');
+            let imgSrc = '';
+            if (img) {
+                imgSrc = img.dataset?.src || img.dataset?.original
+                       || img.getAttribute('data-src') || img.getAttribute('data-original')
+                       || img.src || '';
+                // 명백한 placeholder/icon 거르기
+                if (/pb-icon|placeholder|blank|spacer|loading\.gif/i.test(imgSrc)) {
+                    const alt1 = img.dataset?.original || img.getAttribute('data-original');
+                    const alt2 = img.dataset?.src || img.getAttribute('data-src');
+                    imgSrc = (alt1 && !/pb-icon|placeholder/i.test(alt1)) ? alt1
+                           : (alt2 && !/pb-icon|placeholder/i.test(alt2)) ? alt2
+                           : '';
+                }
+            }
             out.push({
                 source_id: gid,
                 name: name.slice(0, 200),
                 price: price,
-                img_src: img ? (img.src || img.dataset?.src || '') : '',
+                img_src: imgSrc,
                 href: a.href,
             });
         }
