@@ -15,6 +15,9 @@ from supabase_client import SupabaseClient
 ROOT = Path(__file__).parent
 LOGO_PATH = ROOT / "static" / "WI_logo_official_fullcolor.png"
 ADMIN_PASS = "wi2026"  # 시험가동 임시 비번 (정식은 Supabase Auth)
+# ── 시험가동 외부 차단 (한 달간) ─ 끝나면 ACCESS_GUARD_ENABLED=False 로 ──
+ACCESS_GUARD_ENABLED = True
+ACCESS_CODE = "wi-test"  # 직원 공유용 코드 (단순, 한 달 후 제거)
 
 
 st.set_page_config(
@@ -460,6 +463,48 @@ def cart_total():
 # (admin/admin_orders 자동 복원은 보안상 제거 — URL만으로 admin 권한 부여 X.
 #  카드 클릭이 st.button 콜백 방식으로 바뀌어 session 손실도 더 이상 없음)
 qp = st.query_params if hasattr(st, "query_params") else {}
+
+
+# ────────────────────────────────────────────────────────────
+# 시험가동 외부 차단 가드 — 1개월 테스트 후 ACCESS_GUARD_ENABLED=False 로 제거
+# ────────────────────────────────────────────────────────────
+if "access_granted" not in st.session_state:
+    st.session_state.access_granted = False
+
+if ACCESS_GUARD_ENABLED and not st.session_state.access_granted:
+    if LOGO_URI:
+        st.markdown(
+            f'<div style="text-align:center;padding:48px 0 24px 0">'
+            f'<img src="{LOGO_URI}" style="max-width:300px;height:auto">'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    st.markdown(
+        '<div style="text-align:center;margin-bottom:24px">'
+        '<h2 style="font-weight:600;letter-spacing:-0.5px">🔒 시험가동 중</h2>'
+        '<p style="color:#6B7280;font-size:14px">현재 시험 운영 기간입니다 (2026-05 ~ 06).<br>'
+        '직원 접속 코드를 입력해주세요.</p></div>',
+        unsafe_allow_html=True,
+    )
+    gc1, gc2, gc3 = st.columns([1, 2, 1])
+    with gc2:
+        with st.form("access_form"):
+            code = st.text_input("접속 코드", type="password", placeholder="직원 코드", label_visibility="collapsed")
+            if st.form_submit_button("입장", use_container_width=True, type="primary"):
+                if code == ACCESS_CODE:
+                    st.session_state.access_granted = True
+                    st.rerun()
+                else:
+                    st.error("코드가 일치하지 않습니다.")
+        st.markdown(
+            '<div style="text-align:center;margin-top:32px;padding-top:24px;border-top:1px solid #E5E8EC;font-size:12px;color:#6B7280">'
+            '<strong>외부 손님</strong>이신가요?<br>'
+            '시험 기간 중에는 접속이 제한됩니다. <a href="mailto:sales@wholesale-k.com" style="color:#0089D0">sales@wholesale-k.com</a> 으로 연락 부탁드립니다.<br>'
+            '<em>정식 오픈: 2026년 6월 중</em>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    st.stop()
 
 # 검색 상태 복원 (카드 클릭으로 reload된 경우)
 if qp.get("q") and not st.session_state.search_q:
