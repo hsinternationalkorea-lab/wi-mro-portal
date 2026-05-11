@@ -853,20 +853,17 @@ else:
   {admin_block}
 </div>
 """, unsafe_allow_html=True)
-                        # 액션: 상세 / 수량 / 카트 담기 (모두 st.button 콜백 — session_state 유지)
-                        # 비율 조정: [상세 2:수량 1:카트 2] — 좁은 컬럼에서 "상세"가 세로 줄바뀜되던 문제 해결
-                        ac1, ac2, ac3 = st.columns([2, 1, 2])
+                        # 액션 — 카드는 빠른 의사결정만, 수량은 카트 페이지에서 조정
+                        # [상세] : [+ 담기] 2분할 (수량 1로 자동 추가, 자세히는 상세 페이지에서)
+                        ac1, ac2 = st.columns(2)
                         with ac1:
                             if st.button("상세", key=f"view_{prod['id']}", use_container_width=True):
                                 st.session_state.view_detail_for = prod
                                 st.rerun()
                         with ac2:
-                            qty = st.number_input("수량", min_value=1, value=1, step=1,
-                                                  key=f"qty_{prod['id']}", label_visibility="collapsed")
-                        with ac3:
-                            if st.button("카트 담기", key=f"add_{prod['id']}", use_container_width=True):
-                                add_to_cart(prod, qty)
-                                st.toast(f"카트에 추가: {prod.get('name_ko','')[:20]} × {qty}")
+                            if st.button("＋ 담기", key=f"add_{prod['id']}", use_container_width=True, type="primary"):
+                                add_to_cart(prod, 1)
+                                st.toast(f"카트에 추가: {prod.get('name_ko','')[:20]}")
                                 st.rerun()
 
             # 페이지네이션
