@@ -85,15 +85,19 @@ html, body, [class*="css"], .stApp, .stMarkdown, p, span, div, a, button, input,
 
 /* 우측 nav 버튼들 — 구글처럼 작고 깔끔 */
 .nav-icon-row [data-testid="stButton"] button {
-    padding: 6px 10px !important;
-    font-size: 12px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    border-radius: 17px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 16px !important;
     border: 1px solid var(--wi-gray-2) !important;
     background: #ffffff !important;
     color: var(--wi-text) !important;
     font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: -0.3px !important;
 }
 .nav-icon-row [data-testid="stButton"] button:hover {
     background: var(--wi-gray-1) !important;
@@ -532,8 +536,8 @@ if "view_help" not in st.session_state: st.session_state.view_help = False
 if "recent_products" not in st.session_state: st.session_state.recent_products = []
 if "favorites" not in st.session_state: st.session_state.favorites = set()
 
-# 좌측(작은 로고 or 빈공간) + 우측(작은 메뉴) 2단 구조 — 우측은 1/3 정도만 차지
-nav_l, nav_r = st.columns([7, 3])
+# 좌측(작은 로고 or 빈공간) + 우측(작은 메뉴) 2단 구조 — 5분할 메뉴가 잘리지 않도록 우측 폭 확대
+nav_l, nav_r = st.columns([6, 4])
 
 with nav_l:
     # 메인 화면에서는 좌측 비움 (hero가 가운데에서 큰 로고 표시) — 구글 메인처럼
