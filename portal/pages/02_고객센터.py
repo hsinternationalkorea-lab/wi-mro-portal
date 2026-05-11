@@ -15,14 +15,17 @@
 """
 import os
 import sys
+import json
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import streamlit as st
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from supabase_client import SupabaseClient
+# 학습 데이터 저장 — JSONL 파일 (운영 supabase 계정 식별 후 마이그레이션 예정)
+ROOT_DIR = Path(__file__).parent.parent.parent
+LOG_FILE = ROOT_DIR / "output" / "training" / "training_logs.jsonl"
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(
     page_title="WI · 고객센터 학습",
@@ -154,8 +157,6 @@ with st.form("training_form", clear_on_submit=True):
             st.error("손님 질문 / 모범 답변 모두 입력 필요합니다.")
         else:
             try:
-                client = SupabaseClient()
-                # 한 쌍을 두 row 로 저장 (role=user / assistant)
                 base = {
                     "session_id": st.session_state.session_id,
                     "employee_name": employee,
@@ -164,20 +165,21 @@ with st.form("training_form", clear_on_submit=True):
                     "difficulty": difficulty,
                     "tags": tags.strip() or None,
                     "internal_note": note.strip() or None,
-                    "is_simulated": True,  # 직원 시나리오 학습 데이터
+                    "is_simulated": True,
                     "is_after_hours": is_after_hours,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
-                client.insert("chat_logs", [
-                    {**base, "role": "user", "message": customer_msg.strip()},
-                    {**base, "role": "assistant", "message": ideal_answer.strip()},
-                ])
+                user_row = {**base, "role": "user", "message": customer_msg.strip()}
+                asst_row = {**base, "role": "assistant", "message": ideal_answer.strip()}
+                # JSONL append-only (한 줄=한 row, 동시성 안전)
+                with open(LOG_FILE, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(user_row, ensure_ascii=False) + "\n")
+                    f.write(json.dumps(asst_row, ensure_ascii=False) + "\n")
                 st.session_state.cs_today_count += 1
-                st.success(f"✅ 저장 완료! 오늘 누적 {st.session_state.cs_today_count}건")
+                st.success(f"✅ 저장 완료! 오늘 누적 {st.session_state.cs_today_count}건  ·  파일: `{LOG_FILE.name}`")
                 st.balloons()
             except Exception as e:
                 st.error(f"저장 실패: {e}")
-                st.caption("Supabase `chat_logs` 테이블이 아직 없을 수 있습니다. 관리자에게 문의.")
 
 
 # ────────────────────────────────────────────────────────────
@@ -187,20 +189,26 @@ st.markdown("---")
 st.markdown("### 📊 누적 학습 현황")
 
 try:
-    client = SupabaseClient()
-    # 직원별 / 카테고리별 카운트는 Supabase 측 RPC 없으므로 클라이언트에서 집계
-    all_logs = client.select(
-        "chat_logs",
-        select="employee_name,scenario_type,is_simulated,role",
-        is_simulated="eq.true",
-        role="eq.user",  # user 메시지만 카운트 (쌍이라 user/assistant 2개씩)
-        limit="5000",
-    )
-    if isinstance(all_logs, list) and all_logs:
-        total = len(all_logs)
+    user_logs = []
+    if LOG_FILE.exists():
+        with open(LOG_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    # user 메시지만 카운트 (한 쌍이 user/assistant 2개)
+                    if row.get("role") == "user" and row.get("is_simulated"):
+                        user_logs.append(row)
+                except json.JSONDecodeError:
+                    pass
+
+    if user_logs:
+        total = len(user_logs)
         by_employee = {}
         by_type = {}
-        for r in all_logs:
+        for r in user_logs:
             e = r.get("employee_name") or "?"
             t = r.get("scenario_type") or "?"
             by_employee[e] = by_employee.get(e, 0) + 1
@@ -237,7 +245,8 @@ st.markdown("---")
 with st.expander("🔧 개발/운영 메모 (관리자)"):
     st.markdown(
         "**현재 단계**: Phase 1 — 학습 데이터 수집 (~2026-06)  \n"
-        "**저장 위치**: Supabase `chat_logs` 테이블  \n"
+        f"**저장 위치**: 서버 JSONL 파일 `{LOG_FILE.relative_to(ROOT_DIR)}`  \n"
+        "(운영 supabase 계정 식별 후 마이그레이션 예정)  \n"
         "**다음 단계 (Phase 2)**:  \n"
         "- 누적 데이터에서 자주 묻는 질문 그룹화 → FAQ 자동 추출  \n"
         "- Claude API + RAG 로 답변 자동 생성  \n"
