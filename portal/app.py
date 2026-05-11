@@ -601,17 +601,7 @@ if st.session_state.is_admin == "pending":
     st.stop()
 
 
-# 상품 상세 — set 되어 있으면 다른 메인 UI 안 그리고 detail 화면만 표시 (modal-like)
-if st.session_state.view_detail_for:
-    # 상단 닫기 버튼
-    bc1, _bc2 = st.columns([2, 8])
-    with bc1:
-        if st.button("← 검색 결과로 돌아가기", key="detail_close_top", use_container_width=True):
-            st.session_state.view_detail_for = None
-            st.rerun()
-    st.markdown("---")
-    show_product_detail(st.session_state.view_detail_for)
-    st.stop()
+# (상품 상세는 @st.dialog 모달 — 함수 정의(아래쪽) 이후에 트리거함. 여기선 가드 X)
 
 
 # 메인 화면 vs 검색 결과
@@ -1240,7 +1230,7 @@ def show_product_detail(prod):
                 )
 
 
-# URL ?view=ID 외부 직접 진입 처리 — view_detail_for 설정 후 다음 rerun에서 상단 detail 가드(line ~497)가 표시
+# URL ?view=ID 외부 직접 진입 처리 — view_detail_for set 후 아래 modal 트리거
 qp_view = st.query_params.get("view") if hasattr(st, "query_params") else None
 if qp_view and not st.session_state.view_detail_for:
     try:
@@ -1252,6 +1242,13 @@ if qp_view and not st.session_state.view_detail_for:
         st.rerun()
     except Exception:
         pass
+
+
+# 상품 상세 modal 트리거 — show_product_detail 는 @st.dialog 라 호출 즉시 모달로 뜬다
+if st.session_state.view_detail_for:
+    prod_to_show = st.session_state.view_detail_for
+    st.session_state.view_detail_for = None  # 먼저 reset → 무한 trigger 방지
+    show_product_detail(prod_to_show)
 
 
 # 견적 모달
