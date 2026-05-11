@@ -72,6 +72,14 @@ html, body, [class*="css"], .stApp, .stMarkdown, p, span, div, a, button, input,
 .brand-mini img { height: 22px; }
 .brand-mini .name { font-size: 13px; font-weight: 600; color: var(--wi-slate); letter-spacing: -0.3px; }
 
+/* 카드 액션 버튼 — 텍스트 줄바뀜 방지 */
+.product-card + div [data-testid="stButton"] button,
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
 /* 우측 nav 버튼들 — 구글처럼 작고 깔끔 */
 .nav-icon-row [data-testid="stButton"] button {
     padding: 6px 10px !important;
@@ -209,12 +217,13 @@ button[kind="primary"] {
 }
 .product-card:hover { border-color: var(--wi-blue); }
 .product-card .img-wrap {
-    background: var(--wi-gray-1);
+    background: #ffffff;
     height: 140px;
     margin: -16px -16px 12px -16px;
     display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid var(--wi-gray-2);
 }
-.product-card .img-wrap img { max-width: 80%; max-height: 80%; object-fit: contain; }
+.product-card .img-wrap img { max-width: 96%; max-height: 96%; object-fit: contain; }
 .product-card .name {
     font-size: 13px; font-weight: 600; line-height: 1.4;
     height: 36px; overflow: hidden;
@@ -476,8 +485,8 @@ if "view_help" not in st.session_state: st.session_state.view_help = False
 if "recent_products" not in st.session_state: st.session_state.recent_products = []
 if "favorites" not in st.session_state: st.session_state.favorites = set()
 
-# 좌측(작은 로고 or 빈공간) + 우측(작은 메뉴) 2단 구조
-nav_l, nav_r = st.columns([5, 5])
+# 좌측(작은 로고 or 빈공간) + 우측(작은 메뉴) 2단 구조 — 우측은 1/3 정도만 차지
+nav_l, nav_r = st.columns([7, 3])
 
 with nav_l:
     # 메인 화면에서는 좌측 비움 (hero가 가운데에서 큰 로고 표시) — 구글 메인처럼
@@ -572,7 +581,7 @@ if st.session_state.view_help:
         3. [견적 요청] 버튼 → 회사명/담당자/요청사항 입력 → 전송
         4. 영업 담당자가 회신 (보통 1영업일 이내)
 
-        **궁금하신 점은**: sales@wholesale-k.com
+        **궁금하신 점은**: sale@wholesale-k.com
         """)
         if st.button("닫기", key="help_close"):
             st.session_state.view_help = False
@@ -803,7 +812,8 @@ else:
 </div>
 """, unsafe_allow_html=True)
                         # 액션: 상세 / 수량 / 카트 담기 (모두 st.button 콜백 — session_state 유지)
-                        ac1, ac2, ac3 = st.columns([1, 1, 2])
+                        # 비율 조정: [상세 2:수량 1:카트 2] — 좁은 컬럼에서 "상세"가 세로 줄바뀜되던 문제 해결
+                        ac1, ac2, ac3 = st.columns([2, 1, 2])
                         with ac1:
                             if st.button("상세", key=f"view_{prod['id']}", use_container_width=True):
                                 st.session_state.view_detail_for = prod
@@ -1273,6 +1283,6 @@ if st.session_state.show_quote_for:
 st.markdown("""
 <div class="footer">
   <div class="tagline">BUILT ON TRUST. DELIVERED WITH PRECISION.</div>
-  ㈜홀세일인더스트리 · kjhong@wholesale-k.com
+  ㈜홀세일인더스트리 · sale@wholesale-k.com
 </div>
 """, unsafe_allow_html=True)
