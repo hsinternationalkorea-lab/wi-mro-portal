@@ -278,7 +278,7 @@ B("WI 직거래 100 SKU는 기존 흐름 그대로")
 H("7. 문의처", size=18)
 T(["내용", "연락처"],
   [
-    ("시스템 사용 문의", "sale@wholesale-k.com (홍기정 대표)"),
+    ("시스템 사용 문의", "sales@wholesale-k.com (홍기정 대표)"),
     ("운영·견적 문의", "yjyoon@wholesale-k.com (윤여준 매니저)"),
     ("영업팀 공용", "Sales@wholesale-k.com"),
     ("긴급 (시스템 다운)", "010-XXXX-XXXX (운영자)"),

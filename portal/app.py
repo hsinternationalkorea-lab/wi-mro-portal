@@ -581,7 +581,7 @@ if st.session_state.view_help:
         3. [견적 요청] 버튼 → 회사명/담당자/요청사항 입력 → 전송
         4. 영업 담당자가 회신 (보통 1영업일 이내)
 
-        **궁금하신 점은**: sale@wholesale-k.com
+        **궁금하신 점은**: sales@wholesale-k.com
         """)
         if st.button("닫기", key="help_close"):
             st.session_state.view_help = False
@@ -1283,6 +1283,6 @@ if st.session_state.show_quote_for:
 st.markdown("""
 <div class="footer">
   <div class="tagline">BUILT ON TRUST. DELIVERED WITH PRECISION.</div>
-  ㈜홀세일인더스트리 · sale@wholesale-k.com
+  ㈜홀세일인더스트리 · sales@wholesale-k.com
 </div>
 """, unsafe_allow_html=True)
