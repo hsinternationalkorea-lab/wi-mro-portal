@@ -758,7 +758,12 @@ else:
                         wi_code = prod.get("wi_code") or ""
                         is_direct = prod.get("is_directly_sold", False)
                         badge = '<span class="badge-direct">DIRECT</span>' if is_direct else ""
-                        img_html = f'<img src="{img_url}">' if img_url else '<span style="color:#B0B5BD;font-size:11px">이미지 준비 중</span>'
+                        # referrerpolicy=no-referrer — cretec/navimro/subone 등 hot-link 차단 우회
+                        img_html = (
+                            f'<img src="{img_url}" referrerpolicy="no-referrer" loading="lazy" '
+                            f'onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<span style=&quot;color:#B0B5BD;font-size:11px&quot;>이미지 없음</span>\'">'
+                            if img_url else '<span style="color:#B0B5BD;font-size:11px">이미지 준비 중</span>'
+                        )
 
                         if list_p:
                             price_html = f'<span class="currency">₩</span>{int(list_p):,}<span class="unit">/ {unit}</span>'
@@ -1147,16 +1152,17 @@ def show_product_detail(prod):
     dc1, dc2 = st.columns([1, 1])
     with dc1:
         # 큰 이미지 (gallery 형식)
+        # referrerpolicy=no-referrer 로 cretec/navimro/subone hot-link 차단 우회
+        # 큰 사이즈 → 원본 → 'no-image' 3단 fallback
         if big_img:
-            # 큰 사이즈가 깨지면 원본 fallback
             st.markdown(
-                f'<img src="{big_img}" '
-                f'onerror="this.onerror=null;this.src=\'{raw_img}\'" '
-                f'style="width:100%;max-height:500px;object-fit:contain;background:#F8F9FB;border:1px solid #E5E8EC">',
+                f'<img src="{big_img}" referrerpolicy="no-referrer" '
+                f'onerror="if(this.src!==\'{raw_img}\'){{this.onerror=null;this.src=\'{raw_img}\';}}else{{this.style.display=\'none\';this.parentElement.innerHTML+=\'<div style=&quot;padding:80px 0;text-align:center;color:#999;background:#F8F9FB&quot;>이미지 로드 실패</div>\';}}" '
+                f'style="width:100%;max-height:500px;object-fit:contain;background:#ffffff;border:1px solid #E5E8EC">',
                 unsafe_allow_html=True,
             )
         else:
-            st.info("이미지 준비 중")
+            st.info("이미지 준비 중 — 출처 사이트에서 확인하세요")
 
     with dc2:
         name = prod.get("name_ko", "")
