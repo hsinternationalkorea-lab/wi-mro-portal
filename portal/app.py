@@ -406,17 +406,20 @@ if "admin_order_filter" not in st.session_state: st.session_state.admin_order_fi
 
 
 def upgrade_image_url(url, source_code=""):
-    """이미지 URL을 더 큰 사이즈로 변환 (출처별 패턴)
+    """이미지 URL을 더 큰 사이즈로 변환 (출처별 패턴).
 
-    cretec 의 -1.jpg(큰 사이즈)는 모든 상품에 존재하는 게 아니라 404 다발 →
-    raw thumbnail 그대로 사용 (modal max-height 500px 라 -2-3.jpg 도 충분).
+    cretec: -2-N.jpg(썸네일) → -1.jpg(큰 사이즈) 시도.
+            -1.jpg 없을 수도 있으므로 onerror 에서 raw fallback 필요.
     """
     if not url:
         return url
-    # 석림랩텍: small/medium/big 폴더 변환 (이건 안전)
+    if "ctx.cretec.kr" in url:
+        m = re.search(r"/SBI_ITEM_IMG/(\d+)", url)
+        if m:
+            return re.sub(r"/SBI_ITEM_IMG/(\d+)[-\d]*\.(jpg|JPG|jpeg|png)", rf"/SBI_ITEM_IMG/\1-1.\2", url)
+    # 석림랩텍: small/medium/big 폴더
     if "sercrim" in url or "labbazic" in url:
         return url.replace("/small/", "/big/").replace("_small", "_big")
-    # cretec: 변환 금지 (-1.jpg 존재 보장 안 됨)
     return url
 
 
@@ -1150,14 +1153,20 @@ def show_product_detail(prod):
 
     dc1, dc2 = st.columns([1, 1])
     with dc1:
-        # 큰 이미지 (gallery 형식)
-        # referrerpolicy=no-referrer 로 cretec/navimro/subone hot-link 차단 우회
-        # 큰 사이즈 → 원본 → 'no-image' 3단 fallback
+        # 큰 이미지 — 3단 fallback:
+        #   1) big_img (-1.jpg) 시도
+        #   2) 404면 onerror → raw_img (raw thumbnail) 자연 사이즈로
+        #   3) 그것도 실패면 "이미지 로드 실패" placeholder
+        # max-height 만 제한 (max-width 없음) + object-fit:contain 으로 자연스러운 비율 유지
+        # 작은 raw thumbnail 이 들어와도 강제 확대 안 됨 (CSS 추가)
         if big_img:
             st.markdown(
+                f'<div style="background:#ffffff;border:1px solid #E5E8EC;display:flex;align-items:center;justify-content:center;min-height:300px;padding:12px">'
                 f'<img src="{big_img}" referrerpolicy="no-referrer" '
-                f'onerror="if(this.src!==\'{raw_img}\'){{this.onerror=null;this.src=\'{raw_img}\';}}else{{this.style.display=\'none\';this.parentElement.innerHTML+=\'<div style=&quot;padding:80px 0;text-align:center;color:#999;background:#F8F9FB&quot;>이미지 로드 실패</div>\';}}" '
-                f'style="width:100%;max-height:500px;object-fit:contain;background:#ffffff;border:1px solid #E5E8EC">',
+                f'data-fallback="0" '
+                f'onerror="if(this.dataset.fallback===\'0\'){{this.dataset.fallback=\'1\';this.src=\'{raw_img}\';}}else{{this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=&quot;padding:80px 0;color:#999;text-align:center&quot;>이미지 로드 실패</div>\';}}" '
+                f'style="max-width:100%;max-height:500px;width:auto;height:auto;object-fit:contain;image-rendering:auto">'
+                f'</div>',
                 unsafe_allow_html=True,
             )
         else:
