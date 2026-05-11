@@ -67,6 +67,33 @@ html, body, [class*="css"], .stApp, .stMarkdown, p, span, div, a, button, input,
 .topnav .brand .name { font-size: 14px; font-weight: 600; }
 .topnav .nav-right { font-size: 12px; color: var(--wi-text-sub); }
 
+/* 메인 화면 mini 좌측 로고 (검색 후 화면에서만) */
+.brand-mini { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+.brand-mini img { height: 22px; }
+.brand-mini .name { font-size: 13px; font-weight: 600; color: var(--wi-slate); letter-spacing: -0.3px; }
+
+/* 우측 nav 버튼들 — 구글처럼 작고 깔끔 */
+.nav-icon-row [data-testid="stButton"] button {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    border-radius: 17px !important;
+    border: 1px solid var(--wi-gray-2) !important;
+    background: #ffffff !important;
+    color: var(--wi-text) !important;
+    font-weight: 500 !important;
+}
+.nav-icon-row [data-testid="stButton"] button:hover {
+    background: var(--wi-gray-1) !important;
+    border-color: var(--wi-gray-3) !important;
+}
+.nav-icon-row [data-testid="stButton"] button[kind="primary"] {
+    background: var(--wi-blue) !important;
+    color: white !important;
+    border-color: var(--wi-blue) !important;
+}
+
 .hero { text-align: center; padding: 48px 0 32px 0; }
 .hero img.logo {
     width: 100%;
@@ -438,45 +465,117 @@ if qp.get("mfr") and not st.session_state.mfr_filter:
     st.session_state.mfr_filter = qp.get("mfr")
 
 
-# 상단 네비
-nav_left, nav_cart, nav_admin = st.columns([4, 1, 1])
-with nav_left:
-    if LOGO_URI:
-        admin_label = "Admin" if st.session_state.is_admin == True else ""
-        # 로고 클릭 = 홈 (query params 없는 URL로 navigate)
+# 상단 네비 — 구글 스타일: 메인은 우측만, 검색 후엔 좌측에 작은 로고 추가
+# 추가 메뉴 (placeholder): 🕒 최근 본 / ⭐ 찜 / ❓ 도움말 — 향후 실제 기능 연결
+is_main_screen = not st.session_state.search_q and not st.session_state.selected_cat
+admin_logged_in = st.session_state.is_admin == True
+cart_n = cart_count()
+
+# 추가 session_state 변수
+if "view_help" not in st.session_state: st.session_state.view_help = False
+if "recent_products" not in st.session_state: st.session_state.recent_products = []
+if "favorites" not in st.session_state: st.session_state.favorites = set()
+
+# 좌측(작은 로고 or 빈공간) + 우측(작은 메뉴) 2단 구조
+nav_l, nav_r = st.columns([5, 5])
+
+with nav_l:
+    # 메인 화면에서는 좌측 비움 (hero가 가운데에서 큰 로고 표시) — 구글 메인처럼
+    if not is_main_screen and LOGO_URI:
         st.markdown(
-            f'<div class="topnav">'
             f'<a href="/" target="_self" style="text-decoration:none;color:inherit;cursor:pointer">'
-            f'<div class="brand">'
-            f'<img src="{LOGO_URI}" style="height:28px"><span class="name">홀세일인더스트리</span>'
-            f'</div></a>'
-            f'<div class="nav-right">{admin_label}</div></div>',
+            f'<div class="brand-mini">'
+            f'<img src="{LOGO_URI}"><span class="name">홀세일인더스트리</span>'
+            f'</div></a>',
             unsafe_allow_html=True,
         )
-with nav_cart:
-    cart_n = cart_count()
-    cart_label = f"장바구니 ({cart_n})" if cart_n else "장바구니"
-    if st.button(cart_label, use_container_width=True, key="nav_cart_btn",
-                 type="primary" if cart_n > 0 else "secondary"):
-        st.session_state.view_cart = True
-        st.rerun()
-with nav_admin:
-    if st.session_state.is_admin == True:
-        adm1, adm2 = st.columns(2)
-        with adm1:
-            if st.button("의뢰", use_container_width=True, key="nav_admin_orders",
+
+with nav_r:
+    # 우측 작은 메뉴 — 항상 표시 (메인/검색 후 동일)
+    st.markdown('<div class="nav-icon-row">', unsafe_allow_html=True)
+    if admin_logged_in:
+        # 로그인 시: 의뢰 / 최근 / 찜 / 카트 / 로그아웃
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c1:
+            if st.button("📋 의뢰", use_container_width=True, key="nav_admin_orders",
+                         help="견적 의뢰 관리",
                          type="primary" if st.session_state.view_admin_orders else "secondary"):
                 st.session_state.view_admin_orders = True
                 st.session_state.view_cart = False
                 st.rerun()
-        with adm2:
-            if st.button("로그아웃", use_container_width=True, key="nav_admin_logout"):
+        with c2:
+            if st.button("🕒", use_container_width=True, key="nav_recent",
+                         help=f"최근 본 상품 ({len(st.session_state.recent_products)})"):
+                st.toast("최근 본 상품 — 곧 활성화", icon="🕒")
+        with c3:
+            if st.button("⭐", use_container_width=True, key="nav_fav",
+                         help=f"찜 ({len(st.session_state.favorites)})"):
+                st.toast("찜 — 곧 활성화", icon="⭐")
+        with c4:
+            cart_label = f"🛒 {cart_n}" if cart_n else "🛒"
+            if st.button(cart_label, use_container_width=True, key="nav_cart_btn",
+                         help="장바구니",
+                         type="primary" if cart_n > 0 else "secondary"):
+                st.session_state.view_cart = True
+                st.rerun()
+        with c5:
+            if st.button("로그아웃", use_container_width=True, key="nav_admin_logout",
+                         help="관리자 모드 종료"):
                 st.session_state.is_admin = False
                 st.session_state.view_admin_orders = False
                 st.rerun()
     else:
-        if st.button("관리자 로그인", use_container_width=True, key="nav_admin_login"):
-            st.session_state.is_admin = "pending"
+        # 비로그인: 최근 / 찜 / 도움말 / 카트 / 관리자 로그인
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c1:
+            if st.button("🕒", use_container_width=True, key="nav_recent",
+                         help=f"최근 본 상품 ({len(st.session_state.recent_products)})"):
+                st.toast("최근 본 상품 — 곧 활성화", icon="🕒")
+        with c2:
+            if st.button("⭐", use_container_width=True, key="nav_fav",
+                         help=f"찜 ({len(st.session_state.favorites)})"):
+                st.toast("찜 — 곧 활성화", icon="⭐")
+        with c3:
+            if st.button("❓", use_container_width=True, key="nav_help",
+                         help="도움말 / 가이드"):
+                st.session_state.view_help = not st.session_state.view_help
+                st.rerun()
+        with c4:
+            cart_label = f"🛒 {cart_n}" if cart_n else "🛒"
+            if st.button(cart_label, use_container_width=True, key="nav_cart_btn",
+                         help="장바구니",
+                         type="primary" if cart_n > 0 else "secondary"):
+                st.session_state.view_cart = True
+                st.rerun()
+        with c5:
+            if st.button("관리자", use_container_width=True, key="nav_admin_login",
+                         help="관리자 로그인"):
+                st.session_state.is_admin = "pending"
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 도움말 펼침
+if st.session_state.view_help:
+    with st.expander("📖 도움말 / 빠른 가이드", expanded=True):
+        st.markdown("""
+        **WI MRO 통합 검색 — 사용법**
+
+        - **검색**: 상품명, 모델번호, 브랜드로 통합 검색 (42,000+ SKU)
+        - **카테고리**: 메인 화면 카테고리 버튼으로 분야별 탐색
+        - **장바구니 🛒**: 마음에 드는 상품 담기 → 견적 의뢰로 일괄 전송
+        - **최근 본 상품 🕒** (준비 중): 마지막 본 5~10개 빠른 접근
+        - **찜 ⭐** (준비 중): 자주 찾는 SKU 저장
+
+        **견적 요청 흐름:**
+        1. 검색 / 카테고리로 상품 찾기 → 카드의 [상세] 클릭
+        2. [카트 담기] → 우측 상단 🛒에서 일괄 확인
+        3. [견적 요청] 버튼 → 회사명/담당자/요청사항 입력 → 전송
+        4. 영업 담당자가 회신 (보통 1영업일 이내)
+
+        **궁금하신 점은**: sales@wholesale-k.com
+        """)
+        if st.button("닫기", key="help_close"):
+            st.session_state.view_help = False
             st.rerun()
 
 # Admin 비번 입력
