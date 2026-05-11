@@ -550,7 +550,7 @@ with nav_r:
     # 우측 작은 메뉴 — 항상 표시 (메인/검색 후 동일)
     st.markdown('<div class="nav-icon-row">', unsafe_allow_html=True)
     if admin_logged_in:
-        # 로그인 시: 의뢰 / 최근 / 찜 / 카트 / 로그아웃
+        # 로그인 시: 의뢰 / 최근 / 💬 고객센터 / 카트 / 로그아웃
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
             if st.button("📋 의뢰", use_container_width=True, key="nav_admin_orders",
@@ -564,9 +564,9 @@ with nav_r:
                          help=f"최근 본 상품 ({len(st.session_state.recent_products)})"):
                 st.toast("최근 본 상품 — 곧 활성화", icon="🕒")
         with c3:
-            if st.button("⭐", use_container_width=True, key="nav_fav",
-                         help=f"찜 ({len(st.session_state.favorites)})"):
-                st.toast("찜 — 곧 활성화", icon="⭐")
+            if st.button("💬 학습", use_container_width=True, key="nav_cs",
+                         help="고객센터 학습 도구 (시험가동)"):
+                st.switch_page("pages/02_고객센터.py")
         with c4:
             cart_label = f"🛒 {cart_n}" if cart_n else "🛒"
             if st.button(cart_label, use_container_width=True, key="nav_cart_btn",
@@ -581,16 +581,16 @@ with nav_r:
                 st.session_state.view_admin_orders = False
                 st.rerun()
     else:
-        # 비로그인: 최근 / 찜 / 도움말 / 카트 / 관리자 로그인
+        # 비로그인: 최근 / 💬 고객센터 / 도움말 / 카트 / 관리자
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
             if st.button("🕒", use_container_width=True, key="nav_recent",
                          help=f"최근 본 상품 ({len(st.session_state.recent_products)})"):
                 st.toast("최근 본 상품 — 곧 활성화", icon="🕒")
         with c2:
-            if st.button("⭐", use_container_width=True, key="nav_fav",
-                         help=f"찜 ({len(st.session_state.favorites)})"):
-                st.toast("찜 — 곧 활성화", icon="⭐")
+            if st.button("💬 학습", use_container_width=True, key="nav_cs",
+                         help="고객센터 학습 도구 (시험가동)"):
+                st.switch_page("pages/02_고객센터.py")
         with c3:
             if st.button("❓", use_container_width=True, key="nav_help",
                          help="도움말 / 가이드"):
